@@ -1,3 +1,10 @@
+# wobl
+
+multi(at some point) backend textbased game engine :)
+
+## use
+
+```rust
 use wobl::{Attribute, Color, Key, Wobl, backend::CrosstermBackend};
 
 fn main() {
@@ -22,3 +29,14 @@ fn main() {
         );
     }
 }
+```
+
+## backends
+
+backends are quite straight forward to implement. here are the included ones!
+
+- `crossterm` (woah terminal!): this should work pretty much everywhere: windows, linux (x11) and macos. if feature `crossterm_events` is enabled then it uses terminal events (kitty protocol), otherwise it uses `device_query` - enable it if using wayland!
+
+
+
+
