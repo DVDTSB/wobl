@@ -7,8 +7,14 @@ edition = "2024"
 crossterm = "0.29.0"
 device_query = "4.0.1"
 
+[dependencies.sdl2]
+version = "0.38.0"
+default-features = false
+features = ["ttf"]
+
+
 
 [features]
-default = ["crossterm_events"]
+default = []
 crossterm_events = []
 

@@ -147,8 +147,6 @@ impl CrosstermBackend {
             .filter(|&x| x != Key::Unknown)
             .collect();
 
-        println!("{:?}", self.device_state.get_keys());
-
         self.just_pressed = current_keys.difference(&old_keys).cloned().collect();
         self.released_keys = old_keys.difference(&current_keys).cloned().collect();
         self.pressed_keys = current_keys;
@@ -255,7 +253,6 @@ impl CrosstermBackend {
 
                 match key_event.kind {
                     KeyEventKind::Press => {
-                        // Key is newly pressed if it wasn't already in pressed_keys
                         if !self.pressed_keys.contains(&key) {
                             self.just_pressed.insert(key);
                         }
@@ -265,10 +262,7 @@ impl CrosstermBackend {
                         self.pressed_keys.remove(&key);
                         self.released_keys.insert(key);
                     }
-                    KeyEventKind::Repeat => {
-                        // If you want to treat repeats as presses, uncomment:
-                        // self.pressed_keys.insert(key);
-                    }
+                    KeyEventKind::Repeat => {}
                 }
             }
         }
@@ -276,6 +270,10 @@ impl CrosstermBackend {
 }
 
 impl Backend for CrosstermBackend {
+    fn init(&mut self, _name: &str, _width: u32, _height: u32) {
+        todo!();
+    }
+
     fn wait_frame(&mut self) {
         //self.flush();
 
@@ -309,7 +307,7 @@ impl Backend for CrosstermBackend {
         self.released_keys.contains(&key)
     }
 
-    fn draw_cell(&mut self, x: u16, y: u16, cell: &Cell) {
+    fn draw_cell(&mut self, x: u32, y: u32, cell: &Cell) {
         let fg = cell.fg;
         let bg = cell.bg;
         let atr = cell.atr.clone();
@@ -318,7 +316,7 @@ impl Backend for CrosstermBackend {
         }
         execute!(
             self.stdout,
-            cursor::MoveTo(x, y),
+            cursor::MoveTo(x as u16, y as u16),
             SetForegroundColor(fg),
             SetBackgroundColor(bg),
             Print(cell.ch)

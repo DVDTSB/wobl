@@ -5,10 +5,9 @@ pub use backend::Key;
 pub use cell::{Attribute, Cell, Color};
 
 pub struct Wobl {
-    width: u16,
-    height: u16,
-    front_buffer: Vec<Cell>,
-    back_buffer: Vec<Cell>,
+    width: u32,
+    height: u32,
+    buffer: Vec<Cell>,
     backend: Box<dyn backend::Backend>,
 }
 
@@ -16,39 +15,25 @@ impl Wobl {
     /// Creates the engine object:) You can set the backend here!
     pub fn new(
         backend: Box<dyn backend::Backend>,
-        width: u16,
-        height: u16,
+        name: &str,
+        width: u32,
+        height: u32,
         fps: Option<u32>,
     ) -> Self {
         let size = (width * height) as usize;
         let mut wobl = Self {
             width,
             height,
-            front_buffer: vec![Cell::empty(); size],
-            back_buffer: vec![Cell::empty(); size],
+            buffer: vec![Cell::empty(); size],
             backend,
         };
         wobl.backend.set_fps(fps);
+        wobl.backend.init(name, width, height);
         wobl
     }
 
-    fn index(&self, x: u16, y: u16) -> usize {
+    fn index(&self, x: u32, y: u32) -> usize {
         (y * self.width + x) as usize
-    }
-
-    fn flush(&mut self) {
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let idx = self.index(x, y);
-                let back = self.back_buffer[idx].clone();
-                let front = self.front_buffer[idx].clone();
-                if back != front {
-                    self.backend.draw_cell(x, y, &back);
-                    self.front_buffer[idx] = back;
-                }
-            }
-        }
-        self.backend.flush();
     }
 
     pub fn wait_frame(&mut self) {
@@ -62,7 +47,7 @@ impl Wobl {
 
     pub fn draw_cell(&mut self, x: i32, y: i32, cell: &Cell) {
         if x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32 {
-            self.back_buffer[(y * (self.width as i32) + x) as usize] = cell.clone();
+            self.buffer[(y * (self.width as i32) + x) as usize] = cell.clone();
         }
     }
 
@@ -93,7 +78,18 @@ impl Wobl {
     }
 
     pub fn clear(&mut self) {
-        self.back_buffer.iter_mut().for_each(|c| *c = Cell::empty());
+        self.buffer = vec![Cell::empty(); self.buffer.len()];
+    }
+
+    pub fn flush(&mut self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let idx = self.index(x, y);
+                let back = self.buffer[idx].clone();
+                self.backend.draw_cell(x, y, &back);
+            }
+        }
+        self.backend.flush();
     }
 
     pub fn is_key_pressed(&self, key: Key) -> bool {

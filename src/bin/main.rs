@@ -1,18 +1,18 @@
 use wobl::{Attribute, Color, Key, Wobl, backend::CrosstermBackend};
 
 fn main() {
+    println!("hi");
     let backend = Box::new(CrosstermBackend::new());
-    let mut engine = Wobl::new(backend, 60, 40, Some(60));
-
+    let mut wobl = Wobl::new(backend, "wobl", 60, 40, Some(60));
     loop {
-        engine.wait_frame();
+        wobl.wait_frame();
 
-        engine.clear();
+        //wobl.clear();
 
-        if engine.is_key_pressed(Key::Q) {
+        if wobl.is_key_pressed(Key::Q) {
             break;
         }
-        engine.draw_text_atr(
+        wobl.draw_text_atr(
             10,
             10,
             "hello wobl!",
