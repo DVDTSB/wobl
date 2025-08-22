@@ -1,10 +1,17 @@
 use crossterm::{
     cursor,
-    event::{self, Event, KeyCode, KeyEvent},
+    event::{KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags},
     execute,
-    style::{Print, SetBackgroundColor, SetForegroundColor},
+    style::{Print, SetAttribute, SetBackgroundColor, SetForegroundColor},
     terminal,
 };
+
+#[cfg(not(feature = "crossterm_events"))]
+use device_query::{DeviceQuery, DeviceState};
+
+#[cfg(feature = "crossterm_events")]
+use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+
 use std::collections::HashSet;
 use std::io::{Stdout, Write, stdout};
 use std::time::{Duration, Instant};
@@ -16,17 +23,21 @@ pub struct CrosstermBackend {
     pressed_keys: HashSet<Key>,
     just_pressed: HashSet<Key>,
     released_keys: HashSet<Key>,
+    #[cfg(not(feature = "crossterm_events"))]
+    device_state: DeviceState,
+    frame_start: Instant,
     milis: u64,
     stdout: Stdout,
 }
 
 impl CrosstermBackend {
-    pub fn new(fps: u16) -> Self {
+    pub fn new() -> Self {
         let mut stdout = stdout();
         execute!(
             stdout,
             terminal::EnterAlternateScreen,
-            crossterm::cursor::Hide
+            crossterm::cursor::Hide,
+            PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::REPORT_EVENT_TYPES),
         )
         .unwrap();
         terminal::enable_raw_mode().unwrap();
@@ -35,12 +46,116 @@ impl CrosstermBackend {
             pressed_keys: HashSet::new(),
             just_pressed: HashSet::new(),
             released_keys: HashSet::new(),
-            milis: (1.0 / (fps as f32)) as u64,
+            #[cfg(not(feature = "crossterm_events"))]
+            device_state: DeviceState::new(),
+            frame_start: Instant::now(),
+            milis: 0,
             stdout,
         }
     }
 
-    pub fn map_key_code(code: KeyCode) -> Key {
+    #[cfg(not(feature = "crossterm_events"))]
+    fn map_key(code: &device_query::Keycode) -> Key {
+        use device_query::Keycode;
+        match code {
+            // Letters
+            Keycode::A => Key::A,
+            Keycode::B => Key::B,
+            Keycode::C => Key::C,
+            Keycode::D => Key::D,
+            Keycode::E => Key::E,
+            Keycode::F => Key::F,
+            Keycode::G => Key::G,
+            Keycode::H => Key::H,
+            Keycode::I => Key::I,
+            Keycode::J => Key::J,
+            Keycode::K => Key::K,
+            Keycode::L => Key::L,
+            Keycode::M => Key::M,
+            Keycode::N => Key::N,
+            Keycode::O => Key::O,
+            Keycode::P => Key::P,
+            Keycode::Q => Key::Q,
+            Keycode::R => Key::R,
+            Keycode::S => Key::S,
+            Keycode::T => Key::T,
+            Keycode::U => Key::U,
+            Keycode::V => Key::V,
+            Keycode::W => Key::W,
+            Keycode::X => Key::X,
+            Keycode::Y => Key::Y,
+            Keycode::Z => Key::Z,
+
+            // Digits
+            Keycode::Key0 => Key::Key0,
+            Keycode::Key1 => Key::Key1,
+            Keycode::Key2 => Key::Key2,
+            Keycode::Key3 => Key::Key3,
+            Keycode::Key4 => Key::Key4,
+            Keycode::Key5 => Key::Key5,
+            Keycode::Key6 => Key::Key6,
+            Keycode::Key7 => Key::Key7,
+            Keycode::Key8 => Key::Key8,
+            Keycode::Key9 => Key::Key9,
+
+            // Arrows
+            Keycode::Up => Key::Up,
+            Keycode::Down => Key::Down,
+            Keycode::Left => Key::Left,
+            Keycode::Right => Key::Right,
+
+            // Function keys
+            Keycode::F1 => Key::F1,
+            Keycode::F2 => Key::F2,
+            Keycode::F3 => Key::F3,
+            Keycode::F4 => Key::F4,
+            Keycode::F5 => Key::F5,
+            Keycode::F6 => Key::F6,
+            Keycode::F7 => Key::F7,
+            Keycode::F8 => Key::F8,
+            Keycode::F9 => Key::F9,
+            Keycode::F10 => Key::F10,
+            Keycode::F11 => Key::F11,
+            Keycode::F12 => Key::F12,
+
+            // Whitespace and control
+            Keycode::Space => Key::Space,
+            Keycode::Enter => Key::Enter,
+            Keycode::Tab => Key::Tab,
+            Keycode::Escape => Key::Escape,
+            Keycode::Backspace => Key::Backspace,
+
+            // Modifiers and symbols (if needed)
+            Keycode::LShift | Keycode::RShift => Key::Shift,
+            Keycode::LControl | Keycode::RControl => Key::Ctrl,
+            Keycode::LAlt | Keycode::RAlt => Key::Alt,
+            Keycode::CapsLock => Key::CapsLock,
+
+            // Unknown / unhandled
+            _ => Key::Unknown,
+        }
+    }
+    #[cfg(not(feature = "crossterm_events"))]
+    fn update_keys(&mut self) {
+        let old_keys = self.pressed_keys.clone();
+
+        let current_keys: HashSet<Key> = self
+            .device_state
+            .get_keys()
+            .iter()
+            .map(Self::map_key)
+            .filter(|&x| x != Key::Unknown)
+            .collect();
+
+        println!("{:?}", self.device_state.get_keys());
+
+        self.just_pressed = current_keys.difference(&old_keys).cloned().collect();
+        self.released_keys = old_keys.difference(&current_keys).cloned().collect();
+        self.pressed_keys = current_keys;
+    }
+
+    #[cfg(feature = "crossterm_events")]
+    fn map_key(code: KeyCode) -> Key {
         match code {
             // Letters
             KeyCode::Char('a') => Key::A,
@@ -127,19 +242,36 @@ impl CrosstermBackend {
         }
     }
 
-    fn record_key(&mut self, key_event: KeyEvent) {
-        let mapped = Self::map_key_code(key_event.code);
-        if mapped != Key::Unknown {
-            if !self.pressed_keys.contains(&mapped) {
-                self.just_pressed.insert(mapped);
-            }
-            self.pressed_keys.insert(mapped);
-        }
-    }
+    #[cfg(feature = "crossterm_events")]
+    fn update_keys(&mut self) {
+        self.just_pressed.clear();
+        self.released_keys.clear();
+        while event::poll(Duration::from_millis(0)).unwrap() {
+            if let Event::Key(key_event) = event::read().unwrap() {
+                let key = Self::map_key(key_event.code);
+                if key == Key::Unknown {
+                    continue;
+                }
 
-    fn release_key(&mut self, key: Key) {
-        self.pressed_keys.remove(&key);
-        self.released_keys.insert(key);
+                match key_event.kind {
+                    KeyEventKind::Press => {
+                        // Key is newly pressed if it wasn't already in pressed_keys
+                        if !self.pressed_keys.contains(&key) {
+                            self.just_pressed.insert(key);
+                        }
+                        self.pressed_keys.insert(key);
+                    }
+                    KeyEventKind::Release => {
+                        self.pressed_keys.remove(&key);
+                        self.released_keys.insert(key);
+                    }
+                    KeyEventKind::Repeat => {
+                        // If you want to treat repeats as presses, uncomment:
+                        // self.pressed_keys.insert(key);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -147,22 +279,22 @@ impl Backend for CrosstermBackend {
     fn wait_frame(&mut self) {
         //self.flush();
 
-        self.just_pressed.clear();
-        self.released_keys.clear();
+        self.update_keys();
 
-        let frame_start = Instant::now();
         let frame_duration = Duration::from_millis(self.milis);
 
-        while event::poll(Duration::from_millis(0)).unwrap() {
-            if let Event::Key(key_event) = event::read().unwrap() {
-                self.record_key(key_event);
-            }
-        }
-
-        let elapsed = frame_start.elapsed();
+        let elapsed = self.frame_start.elapsed();
         if elapsed < frame_duration {
             std::thread::sleep(frame_duration - elapsed);
         }
+        self.frame_start = Instant::now();
+    }
+
+    fn set_fps(&mut self, fps: Option<u32>) {
+        if fps.is_none() {
+            return;
+        }
+        self.milis = (1000.0 / (fps.unwrap() as f32)) as u64;
     }
 
     fn is_key_pressed(&self, key: Key) -> bool {
@@ -177,18 +309,13 @@ impl Backend for CrosstermBackend {
         self.released_keys.contains(&key)
     }
 
-    fn draw_cell(&mut self, x: u16, y: u16, cell: Cell) {
-        let fg = crossterm::style::Color::Rgb {
-            r: cell.fg.r,
-            b: cell.fg.g,
-            g: cell.fg.b,
-        };
-
-        let bg = crossterm::style::Color::Rgb {
-            r: cell.bg.r,
-            b: cell.bg.g,
-            g: cell.bg.b,
-        };
+    fn draw_cell(&mut self, x: u16, y: u16, cell: &Cell) {
+        let fg = cell.fg;
+        let bg = cell.bg;
+        let atr = cell.atr.clone();
+        for &atribute in atr.iter() {
+            execute!(self.stdout, SetAttribute(atribute)).unwrap();
+        }
         execute!(
             self.stdout,
             cursor::MoveTo(x, y),
@@ -210,7 +337,8 @@ impl Drop for CrosstermBackend {
         execute!(
             self.stdout,
             terminal::LeaveAlternateScreen,
-            crossterm::cursor::Show
+            crossterm::cursor::Show,
+            PopKeyboardEnhancementFlags
         )
         .unwrap();
     }

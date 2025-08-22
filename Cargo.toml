@@ -5,3 +5,10 @@ edition = "2024"
 
 [dependencies]
 crossterm = "0.29.0"
+device_query = "4.0.1"
+
+
+[features]
+default = ["crossterm_events"]
+crossterm_events = []
+

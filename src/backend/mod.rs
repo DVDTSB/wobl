@@ -69,8 +69,9 @@ pub enum Key {
 
     // Modifiers
     Shift,
-    Control,
+    Ctrl,
     Alt,
+    CapsLock,
 
     // Arrows
     Up,
@@ -99,7 +100,8 @@ pub trait Backend {
     fn is_key_pressed(&self, key: Key) -> bool;
     fn is_key_just_pressed(&self, key: Key) -> bool;
     fn is_key_just_released(&self, key: Key) -> bool;
-    fn draw_cell(&mut self, x: u16, y: u16, cell: cell::Cell);
+    fn draw_cell(&mut self, x: u16, y: u16, cell: &cell::Cell);
     fn wait_frame(&mut self);
     fn flush(&mut self);
+    fn set_fps(&mut self, fps: Option<u32>);
 }

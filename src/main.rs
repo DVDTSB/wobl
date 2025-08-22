@@ -1,9 +1,9 @@
-use wobl::{Color, Key, Wobl, backend::CrosstermBackend};
+use wobl::{Attribute, Color, Key, Wobl, backend::CrosstermBackend};
 
 fn main() {
-    let backend = Box::new(CrosstermBackend::new(60));
+    let backend = Box::new(CrosstermBackend::new());
 
-    let mut engine = Wobl::new(backend, 60, 40);
+    let mut engine = Wobl::new(backend, 60, 40, Some(60));
 
     let mut frame = 0;
 
@@ -25,12 +25,20 @@ fn main() {
             y += 0.01;
         }
 
-        engine.draw_text(
-            x as u16,
-            y as u16,
-            "meow".into(),
-            Color::from_vec(&vec![255, 255, 255]),
-            Color::from_vec(&vec![255, 0, 0]),
+        if engine.is_key_pressed(Key::A) {
+            x -= 0.01;
+        }
+        if engine.is_key_pressed(Key::D) {
+            x += 0.01;
+        }
+
+        engine.draw_text_atr(
+            x as i32,
+            y as i32,
+            &format!("{frame}"),
+            Color::from((255, 255, 255)),
+            Color::from(((255.0 * (frame as f32 / 120.0).sin()).abs() as u8, 0, 0)),
+            &vec![Attribute::Italic],
         );
 
         frame += 1;
