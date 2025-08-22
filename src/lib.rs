@@ -1,8 +1,9 @@
 pub mod backend;
 mod cell;
+mod key;
 
-pub use backend::Key;
 pub use cell::{Attribute, Cell, Color};
+pub use key::Key;
 
 pub struct Wobl {
     width: u32,
@@ -12,7 +13,7 @@ pub struct Wobl {
 }
 
 impl Wobl {
-    /// Creates the engine object:) You can set the backend here!
+    /// creates the engine object:) you can set the backend here!
     pub fn new(
         backend: Box<dyn backend::Backend>,
         name: &str,
@@ -36,21 +37,25 @@ impl Wobl {
         (y * self.width + x) as usize
     }
 
+    // to be used at the start/end of the loop - it renders the frame and waits until the next one.
     pub fn wait_frame(&mut self) {
         self.flush();
         self.backend.wait_frame();
     }
 
+    // sets the fps
     pub fn set_fps(&mut self, fps: Option<u32>) {
         self.backend.set_fps(fps);
     }
 
+    // draw a cell
     pub fn draw_cell(&mut self, x: i32, y: i32, cell: &Cell) {
         if x >= 0 && y >= 0 && x < self.width as i32 && y < self.height as i32 {
             self.buffer[(y * (self.width as i32) + x) as usize] = cell.clone();
         }
     }
 
+    // draws text with given attributes
     pub fn draw_text_atr(
         &mut self,
         x: i32,
@@ -73,15 +78,17 @@ impl Wobl {
         }
     }
 
+    // draws text
     pub fn draw_text(&mut self, x: i32, y: i32, text: &str, fg: Color, bg: Color) {
         self.draw_text_atr(x, y, text, fg, bg, &Vec::new());
     }
 
+    // clears the screen
     pub fn clear(&mut self) {
         self.buffer = vec![Cell::empty(); self.buffer.len()];
     }
 
-    pub fn flush(&mut self) {
+    fn flush(&mut self) {
         for y in 0..self.height {
             for x in 0..self.width {
                 let idx = self.index(x, y);
@@ -92,14 +99,16 @@ impl Wobl {
         self.backend.flush();
     }
 
+    // checks key is pressed
     pub fn is_key_pressed(&self, key: Key) -> bool {
         self.backend.is_key_pressed(key)
     }
-
+    // checks if key was just pressed
     pub fn is_key_just_pressed(&self, key: Key) -> bool {
         self.backend.is_key_just_pressed(key)
     }
 
+    // checks if key was just released
     pub fn is_key_just_released(&self, key: Key) -> bool {
         self.backend.is_key_just_released(key)
     }

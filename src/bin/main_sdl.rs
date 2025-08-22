@@ -14,21 +14,8 @@ fn main() {
     ));
 
     let mut wobl = Wobl::new(backend, "Colorful Wobl Demo", 50, 25, Some(30));
-
-    let colors = [
-        Color::Red,
-        Color::Green,
-        Color::Blue,
-        Color::Yellow,
-        Color::Magenta,
-        Color::Cyan,
-        Color::White,
-        Color::Grey,
-        Color::DarkRed,
-        Color::DarkGreen,
-        Color::DarkBlue,
-        Color::DarkYellow,
-    ];
+    let mut x = 10.0;
+    let mut y = 10.0;
 
     loop {
         wobl.wait_frame();
@@ -38,28 +25,36 @@ fn main() {
             break;
         }
 
-        // Draw colorful text
-        for (i, &fg) in colors.iter().enumerate() {
-            let bg = if i % 2 == 0 {
-                Color::Black
-            } else {
-                Color::White
-            };
-            let attr = if i % 3 == 0 {
-                vec![Attribute::Bold]
-            } else if i % 3 == 1 {
-                vec![Attribute::Italic]
-            } else {
-                Vec::new()
-            };
-            wobl.draw_text_atr(
-                0,
-                0 + i as i32 * 2,
-                &format!("Colorful line {}", i + 1),
-                fg,
-                bg,
-                &attr,
-            );
+        if wobl.is_key_pressed(Key::W) || wobl.is_key_pressed(Key::Up) {
+            y -= 0.4;
         }
+        if wobl.is_key_pressed(Key::S) || wobl.is_key_pressed(Key::Down) {
+            y += 0.4;
+        }
+
+        if wobl.is_key_pressed(Key::A) || wobl.is_key_pressed(Key::Left) {
+            x -= 0.8;
+        }
+        if wobl.is_key_pressed(Key::D) || wobl.is_key_pressed(Key::Right) {
+            x += 0.8;
+        }
+
+        wobl.draw_text_atr(
+            x as i32,
+            y as i32,
+            "hello",
+            Color::Black,
+            Color::White,
+            &vec![Attribute::Italic],
+        );
+
+        wobl.draw_text_atr(
+            x as i32 + 6,
+            y as i32,
+            "world",
+            Color::Red,
+            Color::White,
+            &vec![Attribute::Bold],
+        );
     }
 }

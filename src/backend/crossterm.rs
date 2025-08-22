@@ -16,8 +16,8 @@ use std::collections::HashSet;
 use std::io::{Stdout, Write, stdout};
 use std::time::{Duration, Instant};
 
-use crate::backend::{Backend, Key};
 use crate::cell::Cell;
+use crate::{Key, backend::Backend};
 
 pub struct CrosstermBackend {
     pressed_keys: HashSet<Key>,
@@ -44,6 +44,7 @@ impl CrosstermBackend {
             terminal::EnterAlternateScreen,
             crossterm::cursor::Hide,
             PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::REPORT_EVENT_TYPES),
+            //PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES),
         )
         .unwrap();
         terminal::enable_raw_mode().unwrap();

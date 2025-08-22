@@ -1,6 +1,6 @@
 [package]
 name = "wobl"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "multibackend textbased game engine"
 readme-file= "README.md"
@@ -10,6 +10,7 @@ repository = "https://github.com/dvdtsb/wobl"
 [dependencies]
 crossterm = "0.29.0"
 device_query = "4.0.1"
+
 
 [dependencies.sdl2]
 version = "0.38.0"
