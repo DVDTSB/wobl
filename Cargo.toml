@@ -2,6 +2,10 @@
 name = "wobl"
 version = "0.1.0"
 edition = "2024"
+description = "multibackend textbased game engine"
+readme-file= "README.md"
+license = "MIT"
+repository = "https://github.com/dvdtsb/wobl"
 
 [dependencies]
 crossterm = "0.29.0"

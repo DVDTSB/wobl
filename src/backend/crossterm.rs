@@ -28,6 +28,12 @@ pub struct CrosstermBackend {
     frame_start: Instant,
     milis: u64,
     stdout: Stdout,
+
+    front_buffer: Vec<Cell>,
+    back_buffer: Vec<Cell>,
+
+    width: u32,
+    height: u32,
 }
 
 impl CrosstermBackend {
@@ -43,6 +49,7 @@ impl CrosstermBackend {
         terminal::enable_raw_mode().unwrap();
 
         CrosstermBackend {
+            stdout,
             pressed_keys: HashSet::new(),
             just_pressed: HashSet::new(),
             released_keys: HashSet::new(),
@@ -50,7 +57,10 @@ impl CrosstermBackend {
             device_state: DeviceState::new(),
             frame_start: Instant::now(),
             milis: 0,
-            stdout,
+            front_buffer: Vec::new(),
+            back_buffer: Vec::new(),
+            width: 0,
+            height: 0,
         }
     }
 
@@ -267,11 +277,31 @@ impl CrosstermBackend {
             }
         }
     }
+
+    fn draw_cell_internal(&mut self, x: u32, y: u32, cell: &Cell) {
+        let fg = cell.fg;
+        let bg = cell.bg;
+        let atr = cell.atr.clone();
+        for &atribute in atr.iter() {
+            execute!(self.stdout, SetAttribute(atribute)).unwrap();
+        }
+        execute!(
+            self.stdout,
+            cursor::MoveTo(x as u16, y as u16),
+            SetForegroundColor(fg),
+            SetBackgroundColor(bg),
+            Print(cell.ch)
+        )
+        .unwrap();
+    }
 }
 
 impl Backend for CrosstermBackend {
-    fn init(&mut self, _name: &str, _width: u32, _height: u32) {
-        todo!();
+    fn init(&mut self, _name: &str, width: u32, height: u32) {
+        self.back_buffer = vec![Cell::empty(); (width * height) as usize];
+        self.front_buffer = self.back_buffer.clone();
+        self.width = width as u32;
+        self.height = height as u32;
     }
 
     fn wait_frame(&mut self) {
@@ -308,23 +338,24 @@ impl Backend for CrosstermBackend {
     }
 
     fn draw_cell(&mut self, x: u32, y: u32, cell: &Cell) {
-        let fg = cell.fg;
-        let bg = cell.bg;
-        let atr = cell.atr.clone();
-        for &atribute in atr.iter() {
-            execute!(self.stdout, SetAttribute(atribute)).unwrap();
-        }
-        execute!(
-            self.stdout,
-            cursor::MoveTo(x as u16, y as u16),
-            SetForegroundColor(fg),
-            SetBackgroundColor(bg),
-            Print(cell.ch)
-        )
-        .unwrap();
+        self.front_buffer[(x + self.width * y) as usize] = cell.clone();
     }
 
     fn flush(&mut self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                let idx = (x + self.width * y) as usize;
+
+                let back = self.back_buffer[idx].clone();
+                let front = self.front_buffer[idx].clone();
+
+                if front != back {
+                    self.draw_cell_internal(x, y, &front);
+                }
+            }
+        }
+        self.back_buffer = self.front_buffer.clone();
+        self.front_buffer = vec![Cell::empty(); self.front_buffer.len()];
         self.stdout.flush().unwrap();
     }
 }

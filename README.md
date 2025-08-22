@@ -1,6 +1,6 @@
 # wobl
 
-multi(at some point) backend textbased game engine :)
+multi-backend textbased game engine :)
 
 ## use
 
@@ -36,6 +36,8 @@ fn main() {
 backends are quite straight forward to implement. here are the included ones!
 
 - `crossterm` (woah terminal!): this should work pretty much everywhere: windows, linux (x11) and macos. if feature `crossterm_events` is enabled then it uses terminal events (kitty protocol), otherwise it uses `device_query` - enable it if using wayland!
+- `sdl`: for now - it just kinda works - i can definetly make more optimizations (like a texture atlas)
+
 
 
 

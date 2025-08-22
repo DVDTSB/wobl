@@ -6,11 +6,11 @@ use sdl2::{
     keyboard::Keycode,
     pixels::Color as SColor,
     rect::Rect,
-    render::{Canvas, Texture, TextureCreator},
-    ttf::{Font, Sdl2TtfContext},
+    render::{Canvas, TextureCreator},
+    ttf::{Font, FontStyle, Sdl2TtfContext},
     video::{Window, WindowContext},
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 pub fn get_color(color: CColor) -> SColor {
@@ -43,9 +43,9 @@ pub fn get_color(color: CColor) -> SColor {
 }
 
 pub struct SDLBackend<'ttf> {
-    font_size: u32,
+    font_width: u32,
+    font_height: u32,
     context: Sdl,
-    ttf_context: &'ttf Sdl2TtfContext,
     canvas: Option<Canvas<Window>>,
     font: Font<'ttf, 'static>,
     texture_creator: Option<TextureCreator<WindowContext>>,
@@ -67,10 +67,12 @@ impl<'ttf> SDLBackend<'ttf> {
     ) -> Self {
         let font = ttf_context.load_font(font_path, font_size as u16).unwrap();
 
+        let (font_width, font_height) = font.size_of("W").unwrap();
+
         SDLBackend {
-            font_size,
+            font_width,
+            font_height,
             context,
-            ttf_context,
             canvas: None,
             font,
             texture_creator: None,
@@ -159,7 +161,7 @@ impl<'ttf> Backend for SDLBackend<'ttf> {
     fn init(&mut self, name: &str, width: u32, height: u32) {
         let video_subsystem = self.context.video().unwrap();
         let window = video_subsystem
-            .window(name, width * self.font_size, height * self.font_size)
+            .window(name, width * self.font_width, height * self.font_height)
             .position_centered()
             .build()
             .unwrap();
@@ -209,31 +211,46 @@ impl<'ttf> Backend for SDLBackend<'ttf> {
             canvas.set_draw_color(get_color(cell.bg));
             canvas
                 .fill_rect(Rect::new(
-                    (x * self.font_size) as i32,
-                    (y * self.font_size) as i32,
-                    self.font_size,
-                    self.font_size,
+                    (x * self.font_width) as i32,
+                    (y * self.font_height) as i32,
+                    self.font_width,
+                    self.font_height,
                 ))
                 .unwrap();
 
             if let Some(tc) = &self.texture_creator {
+                //set font style
+                let mut style = FontStyle::NORMAL;
+                for &attr in &cell.atr {
+                    match attr {
+                        crate::Attribute::Bold => style |= FontStyle::BOLD,
+                        crate::Attribute::Italic => style |= FontStyle::ITALIC,
+                        crate::Attribute::Underlined => style |= FontStyle::UNDERLINE,
+                        _ => (),
+                    }
+                }
+                self.font.set_style(style);
+
                 let surface = self
                     .font
                     .render(&cell.ch.to_string())
                     .blended(get_color(cell.fg))
                     .unwrap();
+
+                let (glyph_width, glyph_height) = surface.size();
                 let texture = tc.create_texture_from_surface(&surface).unwrap();
+
                 let target = Rect::new(
-                    (x * self.font_size) as i32,
-                    (y * self.font_size) as i32,
-                    self.font_size,
-                    self.font_size,
+                    (x * self.font_width) as i32,
+                    (y * self.font_height) as i32,
+                    glyph_width,
+                    glyph_height,
                 );
+
                 canvas.copy(&texture, None, Some(target)).unwrap();
             }
         }
     }
-
     fn flush(&mut self) {
         if let Some(canvas) = &mut self.canvas {
             canvas.present();
